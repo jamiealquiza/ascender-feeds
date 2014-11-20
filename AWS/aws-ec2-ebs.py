@@ -2,11 +2,15 @@
 
 from pprint import pprint
 from boto import ec2
-import socket
-import os
+from queue import Queue
+import socket, os, threading
 
+# AWS vars.
 AWS_ACCESS_KEY_ID = os.environ['AWS_ACCESS_KEY_ID']
 AWS_SECRET_ACCESS_KEY = os.environ['AWS_SECRET_ACCESS_KEY']
+# General vars.
+q = Queue()
+
 
 def stringify(input):
     """Iterates over dict and converts k/v pairs to strings (excluding ints)."""
@@ -33,8 +37,10 @@ def ascend(msg):
             break
     s.close()
 
-def pull_region(region):
+def pull_region():
     """Pulls EC2 and EBS metadata from region and combines/filters."""
+    # Pull region from queue and handle.
+    region = q.get()
     ec2conn = ec2.connect_to_region(region,
         aws_access_key_id=AWS_ACCESS_KEY_ID,
         aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
@@ -86,10 +92,20 @@ def pull_region(region):
         msg = str(stringify(meta)).replace("\'", "\"")
 
         ascend(msg)
+    # Work done for region.
+    q.task_done()
 
+
+# Init up thread pool.
+for i in range(4):
+    t = threading.Thread(target=pull_region)
+    t.daemon = True
+    t.start()
+    
 def main():
     # Regions to query.
     regions = ['us-west-1', 'us-west-2', 'us-east-1']
-    for r in regions: pull_region(r)
+    for r in regions: q.put(r)
+    q.join()
 
 if  __name__ =='__main__': main()
