@@ -5,6 +5,8 @@ from boto import ec2
 import socket
 import os
 
+AWS_ACCESS_KEY_ID = os.environ['AWS_ACCESS_KEY_ID']
+AWS_SECRET_ACCESS_KEY = os.environ['AWS_SECRET_ACCESS_KEY']
 
 def stringify(input):
     """Iterates over dict and converts k/v pairs to strings (excluding ints)."""
@@ -17,8 +19,19 @@ def stringify(input):
     else:
         return str(input)
 
-AWS_ACCESS_KEY_ID = os.environ['AWS_ACCESS_KEY_ID']
-AWS_SECRET_ACCESS_KEY = os.environ['AWS_SECRET_ACCESS_KEY']
+def ascend(msg):
+    """Sends message to Ascender."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect(("127.0.0.1", 6030))
+    s.sendall(bytes(msg, 'UTF-8'))
+    while 1:
+        resp = s.recv(4096)
+        if resp != b'':
+            print("%s" % resp.decode("utf-8").rstrip())
+        else:
+            resp += s.recv(4096)
+            break
+    s.close()
 
 def pull_region(region):
     """Pulls EC2 and EBS metadata from region and combines/filters."""
@@ -35,23 +48,12 @@ def pull_region(region):
         volumes.append(stringify(i.__dict__))
 
     for i in volumes:
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect(("127.0.0.1", 6030))
-
         # Set type for Langolier.
         i['@type'] = "aws-ebs"
-
         # Format for Ascender.
         msg = str(i).replace("\'", "\"")
-        s.sendall(bytes(msg, 'UTF-8'))
-        while 1:
-            resp = s.recv(4096)
-            if resp != b'':
-                print("Ascender response: %s" % resp.decode("utf-8"))
-            else:
-                resp += s.recv(4096)
-                break
-        s.close()
+
+        ascend(msg)
 
     # Get EC2 instances.
     reservations = ec2conn.get_all_instances()
@@ -82,15 +84,8 @@ def pull_region(region):
 
         # Format for Ascender.
         msg = str(stringify(meta)).replace("\'", "\"")
-        s.sendall(bytes(msg, 'UTF-8'))
-        while 1:
-            resp = s.recv(4096)
-            if resp != b'':
-                print("Ascender response: %s" % resp.decode("utf-8"))
-            else:
-                resp += s.recv(4096)
-                break
-        s.close()
+
+        ascend(msg)
 
 def main():
     # Regions to query.
