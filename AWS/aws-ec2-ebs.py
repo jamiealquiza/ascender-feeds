@@ -3,16 +3,28 @@
 from pprint import pprint
 from boto import ec2
 from queue import Queue
-import socket, os, threading
+import socket, sys, os, threading, time, logging
 
 # AWS vars.
 AWS_ACCESS_KEY_ID = os.environ['AWS_ACCESS_KEY_ID']
 AWS_SECRET_ACCESS_KEY = os.environ['AWS_SECRET_ACCESS_KEY']
-# General vars.
+# Config vars.
 ascender_address = "127.0.0.1"
 ascender_port = 6030
+query_threads = 8
+ascend_threads = 2
+# General vars / objects.
 q_query = Queue()
 q_ascend = Queue(512)
+
+# Logging config.
+log = logging.getLogger()
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+handler.setFormatter(logging.Formatter(fmt='%(asctime)s | %(levelname)s | %(message)s'))
+log.addHandler(handler)
+log.setLevel(logging.INFO)
+
 
 def stringify(input):
     """Iterates over dict and converts k/v pairs to strings (excluding ints)."""
@@ -48,7 +60,8 @@ def query_region():
     # Pull region from queue and handle.
     while True:
         region = q_query.get()
-        print("Querying region: %s" % region)
+        log.info("Querying region: %s" % region)
+        t_start = time.time()
         ec2conn = ec2.connect_to_region(region,
             aws_access_key_id=AWS_ACCESS_KEY_ID,
             aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
@@ -98,18 +111,19 @@ def query_region():
             q_ascend.put(msg)
 
         # Work done for region.
-        print("Region done: %s" % region)
+        t_delta = round(time.time() - t_start, 2)
+        log.info("Region done: %s in %s sec." % (region, t_delta))
         q_query.task_done()
 
 
 # Init query thread pool.
-for i in range(8):
+for i in range(query_threads):
     t = threading.Thread(target=query_region)
     t.daemon = True
     t.start()
 
 # Init Ascender sending pool.
-for i in range(2):
+for i in range(ascend_threads):
     t = threading.Thread(target=ascend)
     t.daemon = True
     t.start()
