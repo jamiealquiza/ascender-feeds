@@ -5,9 +5,17 @@ from boto import ec2
 from queue import Queue
 import socket, sys, os, threading, time, logging, argparse
 
-# AWS vars.
+# Break if not set.
+for i in ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"]:
+    try:
+        os.environ[i]
+    except KeyError:
+        log.error("Environment variable %s must be set" % i)
+        os.exit(1)
+# Assign.
 AWS_ACCESS_KEY_ID = os.environ['AWS_ACCESS_KEY_ID']
 AWS_SECRET_ACCESS_KEY = os.environ['AWS_SECRET_ACCESS_KEY']
+
 # Config vars.
 ascender_address = "127.0.0.1"
 ascender_port = 6030
