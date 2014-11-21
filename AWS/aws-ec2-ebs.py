@@ -28,7 +28,9 @@ log.setLevel(logging.INFO)
 # Args.
 parser = argparse.ArgumentParser(description='Queries AWS info and writes to Ascender.')
 parser.add_argument('--regions', required=True, type=str,
-    help='Comma delimited list of regions to query. Example: --regions="us-west-2,us-west-1"')
+    help='Comma delimited list of regions to query. \
+    Example: --regions="us-west-2,us-west-1". \
+    Query all available regions with --regions="all"')
 args = parser.parse_args()
 
 
@@ -140,10 +142,13 @@ def main():
     valid_regions = []
     for i in ec2.regions(): valid_regions.append((str(i).split(':')[1]))
     regions = args.regions.split(',')
-    for i in regions:
-        if i not in valid_regions:
-            log.error('''Region invalid: '%s'. Valid regions: %s''' % (i, valid_regions))
-            sys.exit(1)
+    if regions[0] == "all":
+        regions = valid_regions
+    else:
+        for i in regions:
+            if i not in valid_regions:
+                log.error('''Region invalid: '%s'. Valid regions: %s''' % (i, valid_regions))
+                sys.exit(1)
 
     # Enqueue work.
     for r in regions: q_query.put(r)
