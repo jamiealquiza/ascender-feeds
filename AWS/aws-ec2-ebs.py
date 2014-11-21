@@ -2,8 +2,26 @@
 
 from pprint import pprint
 from boto import ec2
+from boto.exception import EC2ResponseError
 from queue import Queue
 import socket, sys, os, threading, time, logging, argparse
+
+# Config vars.
+ascender_address = "127.0.0.1"
+ascender_port = 6030
+query_threads = 8
+ascend_threads = 2
+# General vars / objects.
+q_query = Queue()
+q_ascend = Queue()
+
+# Logging config.
+log = logging.getLogger()
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+handler.setFormatter(logging.Formatter(fmt='%(asctime)s | %(levelname)s | %(message)s'))
+log.addHandler(handler)
+log.setLevel(logging.INFO)
 
 # Break if not set.
 for i in ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"]:
@@ -15,23 +33,6 @@ for i in ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"]:
 # Assign.
 AWS_ACCESS_KEY_ID = os.environ['AWS_ACCESS_KEY_ID']
 AWS_SECRET_ACCESS_KEY = os.environ['AWS_SECRET_ACCESS_KEY']
-
-# Config vars.
-ascender_address = "127.0.0.1"
-ascender_port = 6030
-query_threads = 8
-ascend_threads = 2
-# General vars / objects.
-q_query = Queue()
-q_ascend = Queue(512)
-
-# Logging config.
-log = logging.getLogger()
-handler = logging.StreamHandler()
-handler.setLevel(logging.INFO)
-handler.setFormatter(logging.Formatter(fmt='%(asctime)s | %(levelname)s | %(message)s'))
-log.addHandler(handler)
-log.setLevel(logging.INFO)
 
 # Args.
 parser = argparse.ArgumentParser(description='Queries AWS info and writes to Ascender.\
@@ -80,12 +81,22 @@ def query_region():
         region = q_query.get()
         log.info("%s - querying" % region)
         t_start = time.time()
-        ec2conn = ec2.connect_to_region(region,
-            aws_access_key_id=AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
+        done = False
+        try:
+            ec2conn = ec2.connect_to_region(region,
+                aws_access_key_id=AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
+        except:
+            q_query.task_done()
+            break
 
-        # Get volumes.
-        vols = ec2conn.get_all_volumes()
+        # Get EBS data.
+        try:
+            vols = ec2conn.get_all_volumes()
+        except:
+            q_query.task_done()
+            break
+
         # Create array with volume dictionaries.
         volumes = []
         for i in vols:
@@ -101,7 +112,11 @@ def query_region():
             q_ascend.put(msg)
 
         # Get EC2 instances.
-        reservations = ec2conn.get_all_instances()
+        try:
+            reservations = ec2conn.get_all_instances()
+        except:
+            q_query.task_done()
+            break
         instances = [i for r in reservations for i in r.instances]
 
         # Create dict for volume lookup by id to associate with instances.
