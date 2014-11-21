@@ -35,18 +35,20 @@ def ascend():
         while 1:
             resp = s.recv(256)
             if resp != b'':
-                print("%s" % resp.decode("utf-8").rstrip())
+                continue
+                #print("%s" % resp.decode("utf-8").rstrip())
             else:
                 resp += s.recv(256)
                 break
         s.close()
         q_ascend.task_done()
 
-def pull_region():
+def query_region():
     """Pulls EC2 and EBS metadata from region and combines/filters."""
     # Pull region from queue and handle.
     while True:
         region = q_query.get()
+        print("Querying region: %s" % region)
         ec2conn = ec2.connect_to_region(region,
             aws_access_key_id=AWS_ACCESS_KEY_ID,
             aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
@@ -96,12 +98,13 @@ def pull_region():
             q_ascend.put(msg)
 
         # Work done for region.
+        print("Region done: %s" % region)
         q_query.task_done()
 
 
 # Init query thread pool.
 for i in range(8):
-    t = threading.Thread(target=pull_region)
+    t = threading.Thread(target=query_region)
     t.daemon = True
     t.start()
 
