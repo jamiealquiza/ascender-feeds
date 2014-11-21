@@ -26,7 +26,9 @@ log.addHandler(handler)
 log.setLevel(logging.INFO)
 
 # Args.
-parser = argparse.ArgumentParser(description='Queries AWS info and writes to Ascender.')
+parser = argparse.ArgumentParser(description='Queries AWS info and writes to Ascender.\
+    Requires AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables to be set\
+    for the respective AWS account to query.')
 parser.add_argument('--regions', required=True, type=str,
     help='Comma delimited list of regions to query. \
     Example: --regions="us-west-2,us-west-1". \
