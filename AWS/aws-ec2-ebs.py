@@ -29,7 +29,7 @@ for i in ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"]:
         os.environ[i]
     except KeyError:
         log.error("Environment variable %s must be set" % i)
-        os.exit(1)
+        sys.exit(1)
 # Assign.
 AWS_ACCESS_KEY_ID = os.environ['AWS_ACCESS_KEY_ID']
 AWS_SECRET_ACCESS_KEY = os.environ['AWS_SECRET_ACCESS_KEY']
@@ -163,6 +163,13 @@ for i in range(ascend_threads):
     t.start()
 
 def main():
+    # Check if Ascender is reachable.
+    s_test = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        s.connect((ascender_address, ascender_port))
+    except:
+        log.error("Ascender is not reachable at: %s:%d" % (ascender_address, ascender_port))
+        sys.exit(1)
     # Sanity check regions arg.
     valid_regions = []
     for i in ec2.regions(): valid_regions.append((str(i).split(':')[1]))
