@@ -60,7 +60,7 @@ def query_region():
     # Pull region from queue and handle.
     while True:
         region = q_query.get()
-        log.info("Querying region: %s" % region)
+        log.info("%s - querying" % region)
         t_start = time.time()
         ec2conn = ec2.connect_to_region(region,
             aws_access_key_id=AWS_ACCESS_KEY_ID,
@@ -112,7 +112,8 @@ def query_region():
 
         # Work done for region.
         t_delta = round(time.time() - t_start, 2)
-        log.info("Region done: %s in %s sec." % (region, t_delta))
+        objects = len(volumes) + len(instances)
+        log.info("%s - done: found %s objects in %s sec." % (region, objects, t_delta))
         q_query.task_done()
 
 
@@ -131,7 +132,9 @@ for i in range(ascend_threads):
 def main():
     # Regions to query.
     regions = ['us-west-1', 'us-west-2', 'us-east-1']
+    # Enqueue work.
     for r in regions: q_query.put(r)
+    # Wait for pizza to cook.
     q_query.join()
 
 if  __name__ =='__main__': main()
