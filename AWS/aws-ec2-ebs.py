@@ -1,10 +1,9 @@
 #!/usr/local/bin/python3
 
+import socket, sys, os, threading, time, logging, argparse
+from queue import Queue
 from pprint import pprint
 from boto import ec2
-from boto.exception import EC2ResponseError
-from queue import Queue
-import socket, sys, os, threading, time, logging, argparse
 
 # Config vars.
 ascender_address = "127.0.0.1"
@@ -167,6 +166,7 @@ def main():
     s_test = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         s_test.connect((ascender_address, ascender_port))
+        log.info("Connected to Ascender at: %s:%d" % (ascender_address, ascender_port))
     except:
         log.error("Ascender is not reachable at: %s:%d" % (ascender_address, ascender_port))
         sys.exit(1)
