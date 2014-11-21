@@ -166,7 +166,7 @@ def main():
     # Check if Ascender is reachable.
     s_test = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
-        s.connect((ascender_address, ascender_port))
+        s_test.connect((ascender_address, ascender_port))
     except:
         log.error("Ascender is not reachable at: %s:%d" % (ascender_address, ascender_port))
         sys.exit(1)
