@@ -3,7 +3,7 @@
 from pprint import pprint
 from boto import ec2
 from queue import Queue
-import socket, sys, os, threading, time, logging
+import socket, sys, os, threading, time, logging, argparse
 
 # AWS vars.
 AWS_ACCESS_KEY_ID = os.environ['AWS_ACCESS_KEY_ID']
@@ -24,6 +24,12 @@ handler.setLevel(logging.INFO)
 handler.setFormatter(logging.Formatter(fmt='%(asctime)s | %(levelname)s | %(message)s'))
 log.addHandler(handler)
 log.setLevel(logging.INFO)
+
+# Args.
+parser = argparse.ArgumentParser(description='Queries AWS info and writes to Ascender.')
+parser.add_argument('--regions', required=True, type=str,
+    help='Comma delimited list of regions to query. Example: --regions="us-west-2,us-west-1"')
+args = parser.parse_args()
 
 
 def stringify(input):
@@ -130,8 +136,15 @@ for i in range(ascend_threads):
     t.start()
 
 def main():
-    # Regions to query.
-    regions = ['us-west-1', 'us-west-2', 'us-east-1']
+    # Sanity check regions arg.
+    valid_regions = []
+    for i in ec2.regions(): valid_regions.append((str(i).split(':')[1]))
+    regions = args.regions.split(',')
+    for i in regions:
+        if i not in valid_regions:
+            log.error('''Region invalid: '%s'. Valid regions: %s''' % (i, valid_regions))
+            sys.exit(1)
+
     # Enqueue work.
     for r in regions: q_query.put(r)
     # Wait for pizza to cook.
