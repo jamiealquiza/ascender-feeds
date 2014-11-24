@@ -186,5 +186,6 @@ def main():
     for r in regions: q_query.put(r)
     # Wait for pizza to cook.
     q_query.join()
+    q_ascend.join()
 
 if  __name__ =='__main__': main()
