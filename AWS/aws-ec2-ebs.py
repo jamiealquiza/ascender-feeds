@@ -62,13 +62,13 @@ def ascend():
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((ascender_address, ascender_port))
         s.sendall(bytes(msg, 'UTF-8'))
+        resp = ""
         while 1:
-            resp = s.recv(256)
-            if resp != b'':
-                continue
-                #print("%s" % resp.decode("utf-8").rstrip())
+            b = s.recv(256)
+            if b != b'':
+                resp += b.decode("utf-8")
             else:
-                resp += s.recv(256)
+                #print("%s" % resp.rstrip())
                 break
         s.close()
         q_ascend.task_done()
