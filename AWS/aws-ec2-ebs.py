@@ -3,6 +3,7 @@
 import socket, sys, os, threading, time, logging, argparse
 from queue import Queue
 from pprint import pprint
+sys.path.append(os.getcwd() + "/lib")
 from boto import ec2
 
 # Config vars.
@@ -68,7 +69,6 @@ def ascend():
             if b != b'':
                 resp += b.decode("utf-8")
             else:
-                #print("%s" % resp.rstrip())
                 break
         s.close()
         q_ascend.task_done()
@@ -128,14 +128,18 @@ def query_region():
             meta = i.__dict__
             # Set type for Langolier.
             meta['@type'] = "aws-ec2"
-            # Find EBS volumes associated with instance and add to 'vols' key.
-            meta['vols'] = {}
+            # Change to 'meta["vols"] = {}' to associate EBS with instance. Needs ES mapping, though.
+            tmp = { 'vols': {} }
             for i in meta['block_device_mapping'].keys():
-                meta['vols'][i] = volume[meta['block_device_mapping'][i].volume_id]
+                tmp['vols'][i] = volume[meta['block_device_mapping'][i].volume_id]
             # Add a 'storage_total' (sum of all associated EBS size attributes) key.
             meta['storage_total'] = 0
-            for i in meta['vols'].keys():
-                meta['storage_total'] += meta['vols'][i]['size']
+            for i in tmp['vols'].keys():
+                meta['storage_total'] += tmp['vols'][i]['size']
+
+            # Clean stuff up.
+            meta.pop("state_reason", None)
+            meta.pop("instance_profile", None)
 
             # Format for Ascender.
             msg = str(stringify(meta)).replace("\'", "\"")
