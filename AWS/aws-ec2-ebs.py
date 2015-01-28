@@ -42,8 +42,11 @@ parser.add_argument('--regions', required=True, type=str,
     help='Comma delimited list of regions to query. \
     Example: --regions="us-west-2,us-west-1". \
     Query all available regions with --regions="all"')
+parser.add_argument('--tag', required=False, type=str,
+    help='Optional "field:value" pair that will be appended \
+    to all messages.')
 args = parser.parse_args()
-
+if args.tag: tag = args.tag.split(':')
 
 def stringify(input):
     """Iterates over dict and converts k/v pairs to strings (excluding ints)."""
@@ -69,6 +72,7 @@ def ascend():
             if b != b'':
                 resp += b.decode("utf-8")
             else:
+                #print("%s" % resp.rstrip())
                 break
         s.close()
         q_ascend.task_done()
@@ -128,7 +132,10 @@ def query_region():
             meta = i.__dict__
             # Set type for Langolier.
             meta['@type'] = "aws-ec2"
-            # Change to 'meta["vols"] = {}' to associate EBS with instance. Needs ES mapping, though.
+            # Find EBS volumes associated with instance and populate 'tmp' map.
+            # Can change to 'meta["vols"] = {}' to associate EBS with instance, but needs
+            # type cleansing (e.g. tmp.vols.iops could be the Int 3000 [with PIOPS] or the
+            # String None [with standard EBS]) - this breaks with ES dynamic mappings.
             tmp = { 'vols': {} }
             for i in meta['block_device_mapping'].keys():
                 tmp['vols'][i] = volume[meta['block_device_mapping'][i].volume_id]
@@ -142,6 +149,7 @@ def query_region():
             meta.pop("instance_profile", None)
 
             # Format for Ascender.
+            if tag: meta[tag[0]] = tag[1]
             msg = str(stringify(meta)).replace("\'", "\"")
             # Write to Ascender.
             q_ascend.put(msg)
